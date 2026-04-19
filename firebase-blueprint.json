@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and statistics",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "streak": { "type": "integer" },
+        "points": { "type": "integer" },
+        "lastActive": { "type": "string", "format": "date-time" },
+        "weakAreas": { "type": "array", "items": { "type": "string" } },
+        "isPro": { "type": "boolean" },
+        "subscriptionId": { "type": "string" }
+      },
+      "required": ["userId", "email"]
+    },
+    "StudyPlan": {
+      "title": "Study Plan",
+      "description": "A generated study plan for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "examType": { "type": "string" },
+        "subjects": { "type": "array", "items": { "type": "string" } },
+        "plan": { "type": "object" },
+        "isLastNight": { "type": "boolean" }
+      },
+      "required": ["userId", "createdAt", "plan"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile data"
+    },
+    "/users/{userId}/plans/{planId}": {
+      "schema": "StudyPlan",
+      "description": "History of generated plans per user"
+    }
+  }
+}

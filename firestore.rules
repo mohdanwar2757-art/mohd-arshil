@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() { return request.auth != null; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isEmailVerified() { return request.auth.token.email_verified == true; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // User Profile Rules
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) 
+        && isEmailVerified()
+        && incoming().userId == userId
+        && incoming().email == request.auth.token.email
+        && incoming().streak == 0
+        && incoming().points == 0
+        && incoming().isPro == false
+        && incoming().keys().hasAll(['userId', 'email', 'streak', 'points', 'isPro'])
+        && incoming().keys().size() <= 10;
+      
+      allow update: if isOwner(userId)
+        && (
+          // Action: Sync Stats (Points/Streak)
+          (incoming().diff(existing()).affectedKeys().hasOnly(['streak', 'points', 'lastActive', 'weakAreas'])) ||
+          // Action: Admin/System Upgrade (Mocked here, usually server-side)
+          (incoming().diff(existing()).affectedKeys().hasOnly(['isPro', 'subscriptionId']))
+        )
+        && incoming().userId == existing().userId;
+    }
+
+    // Plans Rules (Subcollection under User)
+    match /users/{userId}/plans/{planId} {
+      allow list, get: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && isValidId(planId)
+        && incoming().userId == userId
+        && incoming().createdAt == request.time
+        && incoming().keys().hasAll(['userId', 'createdAt', 'plan'])
+        && incoming().plan is map;
+      
+      // Plans are immutable after creation
+      allow update, delete: if false;
+    }
+  }
+}
